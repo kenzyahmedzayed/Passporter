@@ -1,29 +1,38 @@
 {
   "expo": {
     "name": "Passporter",
-    "slug": "Passporter",
+    "slug": "passporter",
     "version": "1.0.0",
+    "scheme": "passporter",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "icon": "./assets/logo.png",
+    "userInterfaceStyle": "automatic",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.passporter.app"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/logo.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "package": "com.passporter.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/logo.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-camera",
+      "expo-location",
+      "expo-image-picker",
+      "expo-document-picker",
+      "expo-notifications"
+    ]
   }
 }
