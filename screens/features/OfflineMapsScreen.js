@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Network from 'expo-network';
 import { useApp } from '../../context/AppContext';
+import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
 
 const OFFLINE_MAPS_DIR = FileSystem.documentDirectory + 'offline_maps/';
 
@@ -20,6 +22,136 @@ const availableMaps = [
   { id: '9', name: 'Istanbul, Turkey', size: '35 MB', region: 'europe', icon: '🕌' },
   { id: '10', name: 'Barcelona, Spain', size: '30 MB', region: 'europe', icon: '🏖️' },
 ];
+
+
+// Add this component above OfflineMapsScreen
+function MapViewComponent({ openedMap, theme }) {
+  const [userLocation, setUserLocation] = useState(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  // City coordinates for each map
+  const cityCoordinates = {
+    '1': { latitude: 30.0444, longitude: 31.2357, name: 'Cairo' },      // Cairo
+    '2': { latitude: 31.2001, longitude: 29.9187, name: 'Alexandria' }, // Alexandria
+    '3': { latitude: 48.8566, longitude: 2.3522, name: 'Paris' },       // Paris
+    '4': { latitude: 35.6762, longitude: 139.6503, name: 'Tokyo' },     // Tokyo
+    '5': { latitude: 40.7128, longitude: -74.0060, name: 'New York' },  // New York
+    '6': { latitude: -8.3405, longitude: 115.0920, name: 'Bali' },      // Bali
+    '7': { latitude: 25.2048, longitude: 55.2708, name: 'Dubai' },      // Dubai
+    '8': { latitude: 51.5074, longitude: -0.1278, name: 'London' },     // London
+    '9': { latitude: 41.0082, longitude: 28.9784, name: 'Istanbul' },   // Istanbul
+    '10': { latitude: 41.3851, longitude: 2.1734, name: 'Barcelona' },  // Barcelona
+  };
+
+  useEffect(() => {
+    getUserLocation();
+  }, []);
+
+  const getUserLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced
+        });
+        setUserLocation(loc.coords);
+      }
+    } catch (err) {
+      console.log('Location error:', err);
+    }
+    setMapReady(true);
+  };
+
+  if (!openedMap) return null;
+
+  const cityCoord = cityCoordinates[openedMap.id] || cityCoordinates['1'];
+
+  return (
+    <View style={{ flex: 1 }}>
+      {mapReady ? (
+        <MapView
+          style={{ flex: 1 }}
+          initialRegion={{
+            latitude: cityCoord.latitude,
+            longitude: cityCoord.longitude,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+          }}
+          showsUserLocation={true}
+          showsMyLocationButton={true}
+          showsCompass={true}
+          showsBuildings={true}
+          showsTraffic={false}
+        >
+          {/* City center marker */}
+          <Marker
+            coordinate={{
+              latitude: cityCoord.latitude,
+              longitude: cityCoord.longitude,
+            }}
+            title={cityCoord.name}
+            description={`Offline map: ${openedMap.name}`}
+            pinColor="#1A3C6E"
+          />
+
+          {/* User location marker */}
+          {userLocation && (
+            <Marker
+              coordinate={{
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+              }}
+              title="You are here"
+              pinColor="#2D6BC4"
+            />
+          )}
+        </MapView>
+      ) : (
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 15 }}>
+          <ActivityIndicator color={theme.accent} size="large" />
+          <Text style={{ color: theme.subtext, fontSize: 14 }}>Loading map...</Text>
+        </View>
+      )}
+
+      {/* Bottom info card */}
+      <View style={{
+        position: 'absolute',
+        bottom: 20,
+        left: 15,
+        right: 15,
+        backgroundColor: theme.card,
+        borderRadius: 16,
+        padding: 15,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        borderWidth: 1,
+        borderColor: theme.border,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 5,
+      }}>
+        <Text style={{ fontSize: 24 }}>{openedMap.icon}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: theme.text, fontWeight: 'bold', fontSize: 15 }}>
+            {openedMap.name}
+          </Text>
+          <Text style={{ color: '#27ae60', fontSize: 12, marginTop: 2 }}>
+            ✅ Cached offline • {openedMap.size}
+          </Text>
+        </View>
+        {userLocation && (
+          <View style={{ alignItems: 'center' }}>
+            <Ionicons name="location" size={18} color={theme.accent} />
+            <Text style={{ color: theme.subtext, fontSize: 10 }}>GPS Active</Text>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
 
 export default function OfflineMapsScreen({ navigation }) {
   const { theme } = useApp();
@@ -216,34 +348,26 @@ export default function OfflineMapsScreen({ navigation }) {
       </ScrollView>
 
       <Modal
-        visible={!!openedMap}
-        animationType="slide"
-        presentationStyle="fullScreen"
-        onRequestClose={() => setOpenedMap(null)}
-      >
-        <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg }]}>
-          <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
-            <TouchableOpacity onPress={() => setOpenedMap(null)}>
-              <Ionicons name="chevron-back" size={24} color={theme.text} />
-            </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>{openedMap?.name}</Text>
-            <View style={{ width: 24 }} />
-          </View>
-          <View style={styles.offlinePreview}>
-            <Text style={styles.offlinePreviewIcon}>{openedMap?.icon}</Text>
-            <Text style={[styles.offlinePreviewTitle, { color: theme.text }]}>Offline map ready</Text>
-            <Text style={[styles.offlinePreviewText, { color: theme.subtext }]}>
-              Saved map data for {openedMap?.name}. You can use this city guide while offline.
-            </Text>
-            <View style={[styles.offlinePreviewCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <Ionicons name="navigate-outline" size={20} color={theme.accent} />
-              <Text style={[styles.offlinePreviewCardText, { color: theme.text }]}>
-                Local streets, landmarks, and saved places are available.
-              </Text>
-            </View>
-          </View>
-        </SafeAreaView>
-      </Modal>
+  visible={!!openedMap}
+  animationType="slide"
+  presentationStyle="fullScreen"
+  onRequestClose={() => setOpenedMap(null)}
+>
+  <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.bg }]}>
+    <View style={[styles.header, { borderBottomWidth: 1, borderBottomColor: theme.border }]}>
+      <TouchableOpacity onPress={() => setOpenedMap(null)}>
+        <Ionicons name="chevron-back" size={24} color={theme.text} />
+      </TouchableOpacity>
+      <Text style={[styles.headerTitle, { color: theme.text }]}>
+        {openedMap?.name}
+      </Text>
+      <View style={{ width: 24 }} />
+    </View>
+
+    {/* Real Map */}
+    <MapViewComponent openedMap={openedMap} theme={theme} />
+  </SafeAreaView>
+</Modal>
     </SafeAreaView>
   );
 }
@@ -259,7 +383,7 @@ header: {
     alignItems: 'center', 
     justifyContent: 'space-between', 
     paddingHorizontal: 15, 
-    paddingVertical: 10 
+    paddingVertical: 50 
 },
 
 headerTitle: { 
